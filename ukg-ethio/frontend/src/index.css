@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ethio-green: #00A650;
+  --color-ethio-lightGreen: #8CC63F;
+  --color-ethio-blue: #004B87;
+}
+
+@layer base {
+  body {
+    background-color: #f9fafb;
+    /* Built-in class gray-50 equivalent */
+    color: #111827;
+    /* Built-in class gray-900 equivalent */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
