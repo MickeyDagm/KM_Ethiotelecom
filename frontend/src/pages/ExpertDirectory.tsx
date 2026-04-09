@@ -1,4 +1,3 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getExperts } from '../lib/api';
 import { Mail, Phone, BookOpen, UserCheck, Shield } from 'lucide-react';

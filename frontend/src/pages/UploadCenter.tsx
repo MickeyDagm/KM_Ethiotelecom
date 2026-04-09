@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { createDocument } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
