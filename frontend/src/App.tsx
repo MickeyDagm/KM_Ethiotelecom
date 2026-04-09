@@ -1,7 +1,7 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
-// Using placeholders for pages before creating them
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Library from './pages/Library';
@@ -9,7 +9,6 @@ import UploadCenter from './pages/UploadCenter';
 import ExpertDirectory from './pages/ExpertDirectory';
 import DocumentDetail from './pages/DocumentDetail';
 import Profile from './pages/Profile';
-import { useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 
 const queryClient = new QueryClient();
@@ -24,27 +23,32 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 
 function App() {
   const { setAuth } = useAuthStore();
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Quick token re-hydration on reload (not full verification for simplicity)
     const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user'); // if we stored user json
+    const storedUser = localStorage.getItem('user');
     if (storedToken && storedUser) {
       setAuth(JSON.parse(storedUser), storedToken);
     }
+    setHydrated(true); // mark store as hydrated
   }, [setAuth]);
+
+  if (!hydrated) return null; // or show a loader
 
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="library" element={<Library />} />
