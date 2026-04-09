@@ -14,25 +14,31 @@ import { useAuthStore } from './store/authStore';
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { token } = useAuthStore();
+  const token = useAuthStore((state) => state.token);
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }
+
   return children;
 }
 
 function App() {
-  const { setAuth } = useAuthStore();
+//   const { setAuth } = useAuthStore();
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      setAuth(JSON.parse(storedUser), storedToken);
-    }
-    setHydrated(true); // mark store as hydrated
-  }, [setAuth]);
+  const unsub = useAuthStore.persist.onFinishHydration(() => {
+    setHydrated(true);
+  });
+
+  // if already hydrated
+  if (useAuthStore.persist.hasHydrated()) {
+    setHydrated(true);
+  }
+
+  return () => unsub();
+}, []);
 
   if (!hydrated) return null; // or show a loader
 
