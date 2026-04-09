@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDocumentById, addPerformanceLayer } from '../lib/api';
-import { useAuthStore } from '../store/authStore';
+// import { useAuthStore } from '../store/authStore';
 import { User, Tag, Clock, MapPin, Send, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 
 const DocumentDetail = () => {
     const { id } = useParams();
-    const { user } = useAuthStore();
+    // const { user } = useAuthStore();
     const queryClient = useQueryClient();
     const [note, setNote] = useState('');
 

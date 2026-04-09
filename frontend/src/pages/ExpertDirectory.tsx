@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getExperts } from '../lib/api';
-import { Mail, Phone, BookOpen, UserCheck, Shield } from 'lucide-react';
+import { Mail, Phone, BookOpen, Shield } from 'lucide-react';
 
 const ExpertDirectory = () => {
     const { data: experts, isLoading } = useQuery({

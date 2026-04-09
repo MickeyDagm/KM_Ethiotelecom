@@ -1,4 +1,3 @@
-import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Home, BookOpen, UploadCloud, Users, User, LogOut } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
