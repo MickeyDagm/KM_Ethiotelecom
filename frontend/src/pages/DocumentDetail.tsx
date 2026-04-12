@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDocumentById, addPerformanceLayer } from '../lib/api';
 // import { useAuthStore } from '../store/authStore';
-import { User, Tag, Clock, MapPin, Send, MessageSquare } from 'lucide-react';
+import { Tag, Clock, Send, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 
 const DocumentDetail = () => {
@@ -74,7 +74,7 @@ const DocumentDetail = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
+
                 {/* Left Side: Explicit Knowledge (File Split View) */}
                 <div className="space-y-6">
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-full flex flex-col">
@@ -82,11 +82,11 @@ const DocumentDetail = () => {
                             <span className="w-1.5 h-6 bg-[#004B87] rounded-full"></span>
                             <span>Explicit Knowledge (Original Asset)</span>
                         </h3>
-                        
+
                         <div className="flex-1 bg-gray-50 rounded-lg border border-gray-200 flex flex-col items-center justify-center min-h-[500px] p-4">
                             {doc.attachments && doc.attachments.length > 0 ? (
-                                <iframe 
-                                    src={`http://localhost:5000/uploads/${doc.attachments[0].path}`} 
+                                <iframe
+                                    src={`http://localhost:5000/uploads/${doc.attachments[0].path}`}
                                     className="w-full h-full rounded-md shadow-sm border-0 min-h-[500px]"
                                     title="Asset Document"
                                 />
@@ -97,7 +97,7 @@ const DocumentDetail = () => {
                                 </div>
                             )}
                         </div>
-                        
+
                         {doc.associatedVendor && doc.associatedVendor !== 'Internal' && (
                             <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between">
                                 <div>
@@ -119,9 +119,9 @@ const DocumentDetail = () => {
                             <span className="w-1.5 h-6 bg-[#00A650] rounded-full"></span>
                             <span>Heuristic Logic / Expert Tips (Tacit Wisdom)</span>
                         </h3>
-                        
+
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                             <div className="flex items-center space-x-3 mb-2">
+                            <div className="flex items-center space-x-3 mb-2">
                                 <div className="w-8 h-8 bg-amber-200 text-amber-800 rounded-full flex items-center justify-center font-bold">
                                     {doc.author?.name?.charAt(0)}
                                 </div>
