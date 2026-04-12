@@ -5,6 +5,7 @@ import {
     createDocument,
     addLocalPerformanceLayer,
     getAnalytics,
+    checkDuplicate,
 } from '../controllers/document.controller';
 import { authenticate, authorizeRole } from '../middleware/auth.middleware';
 import { upload } from '../middleware/upload.middleware';
@@ -15,6 +16,7 @@ const router = Router();
 // Public routes for authenticated users
 router.get('/', authenticate, getDocuments);
 router.get('/analytics', authenticate, getAnalytics);
+router.get('/check-duplicate', authenticate, checkDuplicate);
 router.get('/:id', authenticate, getDocumentById);
 
 // Restricted routes based on 3-Tier Expertise Hierarchy

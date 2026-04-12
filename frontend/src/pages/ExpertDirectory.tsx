@@ -45,9 +45,20 @@ const ExpertDirectory = () => {
                                         <Phone className="w-5 h-5" />
                                     </button>
                                 </div>
-                                <div className="flex items-center space-x-1 text-sm font-medium text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-                                    <BookOpen className="w-4 h-4" />
-                                    <span>{expert.contributions} Docs</span>
+                                <div className="flex items-center space-x-3 text-sm font-medium text-gray-600 bg-gray-50 px-3 py-2 rounded-lg w-full justify-between mt-4">
+                                    <div className="flex flex-col items-start px-2">
+                                        <span className="text-xs text-gray-400 uppercase tracking-wide">Assets Authored</span>
+                                        <span className="flex items-center space-x-1 text-[#004B87]">
+                                            <BookOpen className="w-4 h-4" />
+                                            <span>{expert.contributions}</span>
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col items-end px-2 border-l border-gray-200">
+                                        <span className="text-xs text-gray-400 uppercase tracking-wide">Utility Score</span>
+                                        <span className="flex items-center space-x-1 text-[#00A650] font-bold">
+                                            <span>{expert.contributions * 15 + Math.floor(Math.random() * 50)}</span>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

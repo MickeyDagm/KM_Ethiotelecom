@@ -8,16 +8,23 @@ export const getDocuments = async (req: Request, res: Response) => {
     try {
         const { search, region, technology, event } = req.query;
 
-        let filter: any = {};
+        let filter: any = { publishStatus: 'Published' };
         if (search) {
             filter.$text = { $search: search as string };
         }
+        if (technology) {
+            filter.technologyVersion = { $regex: new RegExp(technology as string, 'i') };
+        }
 
         // In a real scenario we'd query ContextTag collection by name and match tag IDs
-        // but for simplicity we assume the IDs or names are passed via query
-        // If they are names, we would first find them.
-        // Let's assume we do complex filtering later in frontend or here as needed.
-        // Keeping it simple for prototyping:
+        // For prototype, we will just fetch tag IDs if region or event is provided
+        if (region) {
+            const ContextTag = mongoose.model('ContextTag');
+            const tag = await ContextTag.findOne({ name: region, category: 'Region' });
+            if (tag) {
+                filter.tags = tag._id;
+            }
+        }
 
         const docs = await Document.find(filter)
             .populate('author', 'name role department')
@@ -54,7 +61,7 @@ export const getDocumentById = async (req: Request, res: Response) => {
 
 export const createDocument = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, content, type, technologyVersion, tags } = req.body;
+        const { title, content, type, technologyVersion, tags, publishStatus, associatedVendor } = req.body;
 
         // files from multer
         const files = req.files as Express.Multer.File[];
@@ -71,6 +78,8 @@ export const createDocument = async (req: AuthRequest, res: Response) => {
             author: req.user?._id,
             type,
             technologyVersion,
+            publishStatus: publishStatus || 'Published',
+            associatedVendor: associatedVendor || 'Internal',
             tags: parsedTags,
             attachments
         });
@@ -116,5 +125,24 @@ export const getAnalytics = async (req: Request, res: Response) => {
         res.json({ topDocs });
     } catch (error) {
         res.status(500).json({ message: 'Server error fetching analytics' });
+    }
+};
+
+export const checkDuplicate = async (req: Request, res: Response) => {
+    try {
+        const { title, type, technologyVersion } = req.query;
+        if (!title || !type || !technologyVersion) {
+            return res.status(400).json({ message: 'Missing required query parameters' });
+        }
+        
+        const existing = await Document.findOne({
+            title: title as string,
+            type: type as string,
+            technologyVersion: technologyVersion as string
+        });
+        
+        res.json({ isDuplicate: !!existing });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error checking duplication', error: error.message });
     }
 };
