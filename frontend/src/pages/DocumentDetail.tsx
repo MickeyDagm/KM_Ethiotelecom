@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDocumentById, addPerformanceLayer, updateDocument, getTags } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import { Tag, Clock, Send, MessageSquare, Edit, X, Save, Eye, User, Download, FileIcon, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Tag, Clock, Send, MessageSquare, Edit, X, Save, Eye, User, Download, FileIcon, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
 const API_BASE = import.meta.env.VITE_API_URL || '${API_BASE}';
@@ -25,7 +25,7 @@ const DocumentDetail = () => {
     const [editType, setEditType] = useState('');
     const [editTechVersion, setEditTechVersion] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [showPreview, setShowPreview] = useState(false);
+    // const [showPreview, setShowPreview] = useState(false);
 
     const { data: doc, isLoading } = useQuery({
         queryKey: ['document', id],
@@ -292,7 +292,7 @@ const DocumentDetail = () => {
                                             </a>
                                         </div>
                                     </div>
-                                    {showPreview ? (
+                                    {/* {showPreview ? (
                                         <div className="flex-1 bg-white rounded-lg border border-gray-200 overflow-hidden">
                                             <iframe
                                                 src={`${API_BASE}/api/documents/${doc._id}/preview/0`}
@@ -306,7 +306,7 @@ const DocumentDetail = () => {
                                             <p className="mb-2">Click "Preview" to view the document inline</p>
                                             <p className="text-sm">or "Download" to save to your device</p>
                                         </div>
-                                    )}
+                                    )} */}
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
