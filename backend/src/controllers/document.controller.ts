@@ -2,28 +2,63 @@ import { Request, Response } from 'express';
 import Document from '../models/Document';
 import { AuthRequest } from '../middleware/auth.middleware';
 import mongoose from 'mongoose';
+import path from 'path';
+import fs from 'fs';
 
 // Intelligent Fetch (Search) and Regional Navigation Matrix
 export const getDocuments = async (req: Request, res: Response) => {
     try {
-        const { search, region, technology, event } = req.query;
+        const { search, region, technology, event, type } = req.query;
 
-        let filter: any = { publishStatus: 'Published' };
-        if (search) {
-            filter.$text = { $search: search as string };
-        }
-        if (technology) {
-            filter.technologyVersion = { $regex: new RegExp(technology as string, 'i') };
+        const filter: any = { publishStatus: 'Published' };
+        const tagIds: mongoose.Types.ObjectId[] = [];
+
+        // Filter by document type (this is where "Root Cause Analysis", etc. are stored)
+        if (type) {
+            filter.type = type as string;
         }
 
-        // In a real scenario we'd query ContextTag collection by name and match tag IDs
-        // For prototype, we will just fetch tag IDs if region or event is provided
-        if (region) {
-            const ContextTag = mongoose.model('ContextTag');
-            const tag = await ContextTag.findOne({ name: region, category: 'Region' });
-            if (tag) {
-                filter.tags = tag._id;
+        // Filter by Event type (maps to document's type field)
+        if (event) {
+            // Map friendly names to actual document types
+            const eventMapping: Record<string, string> = {
+                'Root Cause Analysis': 'Root Cause Analysis',
+                'New Tech Adoption': 'New Tech Adoption',
+                'Weekly Presentations': 'Weekly Presentations',
+            };
+            const mappedType = eventMapping[event as string];
+            if (mappedType) {
+                filter.type = mappedType;
             }
+        }
+
+        // Collect tag IDs for filtering (Region and Technology)
+        if (technology || region) {
+            const ContextTag = mongoose.model('ContextTag');
+            
+            if (technology) {
+                const tag = await ContextTag.findOne({ name: technology, category: 'Technology' });
+                if (tag) tagIds.push(tag._id as mongoose.Types.ObjectId);
+            }
+            if (region) {
+                const tag = await ContextTag.findOne({ name: region, category: 'Region' });
+                if (tag) tagIds.push(tag._id as mongoose.Types.ObjectId);
+            }
+
+            if (tagIds.length > 0) {
+                filter.tags = { $in: tagIds };
+            }
+        }
+
+        // Text search with fallback to regex
+        if (search) {
+            const searchRegex = new RegExp(search as string, 'i');
+            filter.$or = [
+                { title: searchRegex },
+                { content: searchRegex },
+                { type: searchRegex },
+                { technologyVersion: searchRegex }
+            ];
         }
 
         const docs = await Document.find(filter)
@@ -63,7 +98,6 @@ export const createDocument = async (req: AuthRequest, res: Response) => {
     try {
         const { title, content, type, technologyVersion, tags, publishStatus, associatedVendor } = req.body;
 
-        // files from multer
         const files = req.files as Express.Multer.File[];
         const attachments = files ? files.map(file => ({
             filename: file.originalname,
@@ -85,7 +119,12 @@ export const createDocument = async (req: AuthRequest, res: Response) => {
         });
 
         await newDoc.save();
-        res.status(201).json(newDoc);
+        
+        const populatedDoc = await Document.findById(newDoc._id)
+            .populate('author', 'name role department')
+            .populate('tags', 'name category');
+        
+        res.status(201).json(populatedDoc);
     } catch (error: any) {
         res.status(500).json({ message: 'Error creating document', error: error.message });
     }
@@ -115,16 +154,71 @@ export const addLocalPerformanceLayer = async (req: AuthRequest, res: Response) 
 
 export const getAnalytics = async (req: Request, res: Response) => {
     try {
-        // Contribution Analytics Dashboard Logic
-        // E.g., Top fetched docs
-        const topDocs = await Document.find()
+        const totalDocs = await Document.countDocuments({ publishStatus: 'Published' });
+        
+        const totalViews = await Document.aggregate([
+            { $match: { publishStatus: 'Published' } },
+            { $group: { _id: null, total: { $sum: '$views' } } }
+        ]);
+
+        const topDocs = await Document.find({ publishStatus: 'Published' })
             .sort({ views: -1 })
             .limit(5)
             .select('title views type createdAt');
 
-        res.json({ topDocs });
+        const rcaCount = await Document.countDocuments({ type: 'Root Cause Analysis', publishStatus: 'Published' });
+        const weeklyCount = await Document.countDocuments({ type: 'Weekly Presentations', publishStatus: 'Published' });
+        const newTechCount = await Document.countDocuments({ type: 'New Tech Adoption', publishStatus: 'Published' });
+
+        res.json({ 
+            topDocs,
+            totalDocs,
+            totalViews: totalViews[0]?.total || 0,
+            rcaCount,
+            weeklyCount,
+            newTechCount
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server error fetching analytics' });
+    }
+};
+
+export const updateDocument = async (req: AuthRequest, res: Response) => {
+    try {
+        const { title, content, type, technologyVersion, tags, publishStatus, associatedVendor } = req.body;
+        
+        const doc = await Document.findById(req.params.id);
+        if (!doc) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+
+        if (title) doc.title = title;
+        if (content) doc.content = content;
+        if (type) doc.type = type;
+        if (technologyVersion) doc.technologyVersion = technologyVersion;
+        if (publishStatus) doc.publishStatus = publishStatus;
+        if (associatedVendor) doc.associatedVendor = associatedVendor;
+        if (tags) doc.tags = JSON.parse(tags);
+
+        // Handle new file attachments
+        const files = req.files as Express.Multer.File[];
+        if (files && files.length > 0) {
+            const newAttachments = files.map(file => ({
+                filename: file.originalname,
+                path: file.filename
+            }));
+            doc.attachments = [...doc.attachments, ...newAttachments];
+        }
+
+        await doc.save();
+        
+        const populatedDoc = await Document.findById(doc._id)
+            .populate('author', 'name role department')
+            .populate('tags', 'name category');
+        
+        res.json(populatedDoc);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error updating document', error: error.message });
     }
 };
 
@@ -144,5 +238,73 @@ export const checkDuplicate = async (req: Request, res: Response) => {
         res.json({ isDuplicate: !!existing });
     } catch (error: any) {
         res.status(500).json({ message: 'Error checking duplication', error: error.message });
+    }
+};
+
+export const downloadAttachment = async (req: Request, res: Response) => {
+    try {
+        const { id, attachmentIndex } = req.params;
+        const doc = await Document.findById(id);
+        
+        if (!doc) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+
+        const index = parseInt(attachmentIndex as string);
+        if (isNaN(index) || index < 0 || index >= doc.attachments.length) {
+            return res.status(400).json({ message: 'Invalid attachment index' });
+        }
+
+        const attachment = doc.attachments[index];
+        const filePath = path.join(__dirname, '../../uploads', attachment.path);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: 'File not found on server' });
+        }
+
+        res.setHeader('Content-Disposition', `attachment; filename="${attachment.filename}"`);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        
+        res.download(filePath, attachment.filename);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error downloading file', error: error.message });
+    }
+};
+
+export const previewAttachment = async (req: Request, res: Response) => {
+    try {
+        const { id, attachmentIndex } = req.params;
+        const doc = await Document.findById(id);
+        
+        if (!doc) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+
+        const index = parseInt(attachmentIndex as string);
+        if (isNaN(index) || index < 0 || index >= doc.attachments.length) {
+            return res.status(400).json({ message: 'Invalid attachment index' });
+        }
+
+        const attachment = doc.attachments[index];
+        const filePath = path.join(__dirname, '../../uploads', attachment.path);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: 'File not found on server' });
+        }
+
+        const ext = path.extname(attachment.filename).toLowerCase();
+        const contentTypes: Record<string, string> = {
+            '.pdf': 'application/pdf',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.txt': 'text/plain',
+        };
+
+        res.setHeader('Content-Type', contentTypes[ext] || 'application/octet-stream');
+        res.sendFile(filePath);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error previewing file', error: error.message });
     }
 };

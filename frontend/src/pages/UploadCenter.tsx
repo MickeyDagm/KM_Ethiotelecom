@@ -1,44 +1,82 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { createDocument } from '../lib/api';
+import { createDocument, getTags, checkDuplicate } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
-import { Upload, AlertTriangle } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Upload, AlertTriangle, Tag as TagIcon } from 'lucide-react';
+
+const INTELLIGENCE_TYPES = [
+    'Root Cause Analysis',
+    'Maintenance Procedure',
+    'Weekly Presentations',
+    'New Tech Adoption & Wiki Sprint'
+];
+
+const VENDORS = ['Internal', 'Huawei', 'ZTE', 'Ericsson'];
+
+interface Tag {
+    _id: string;
+    name: string;
+    category: string;
+}
 
 const UploadCenter = () => {
     const { user } = useAuthStore();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [type, setType] = useState('Root Cause Analysis');
     const [techVersion, setTechVersion] = useState('');
     const [associatedVendor, setAssociatedVendor] = useState('Internal');
-    const [publishStatus, setPublishStatus] = useState('Published');
     const [file, setFile] = useState<File | null>(null);
     const [verifiedDuplicate, setVerifiedDuplicate] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [duplicateWarning, setDuplicateWarning] = useState(false);
+    
+    const [tags, setTags] = useState<Tag[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-    // Duplicate logic check
-    const checkDuplicate = async () => {
+    useEffect(() => {
+        const fetchTags = async () => {
+            try {
+                const data = await getTags();
+                setTags(data);
+            } catch (err) {
+                console.error('Failed to fetch tags:', err);
+            }
+        };
+        fetchTags();
+    }, []);
+
+    const tagsByCategory = tags.reduce((acc, tag) => {
+        if (!acc[tag.category]) acc[tag.category] = [];
+        acc[tag.category].push(tag);
+        return acc;
+    }, {} as Record<string, Tag[]>);
+
+    const checkDuplicateAPI = async () => {
         if (!title || !type || !techVersion) return;
         try {
-            const url = `http://localhost:5000/api/documents/check-duplicate?title=${encodeURIComponent(title)}&type=${encodeURIComponent(type)}&technologyVersion=${encodeURIComponent(techVersion)}`;
-            const res = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}` // assuming token might be needed if authenticated, but maybe standard api handles it. we can also just use existing api lib if we exposed it, but fetch is quick. Assuming no auth requirement for check-duplicate or we can use our lib API
-                }
-            });
-            const data = await res.json();
+            const data = await checkDuplicate(title, type, techVersion);
             setDuplicateWarning(data.isDuplicate);
         } catch(e) {
             console.error('Duplicate check error: ', e);
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleTagToggle = (tagId: string) => {
+        setSelectedTags(prev => 
+            prev.includes(tagId) 
+                ? prev.filter(id => id !== tagId)
+                : [...prev, tagId]
+        );
+    };
+
+    const handleSubmit = async (e: React.FormEvent, status: string = 'Published') => {
         e.preventDefault();
-        if (!verifiedDuplicate) return;
+        if (!verifiedDuplicate && status === 'Published') return;
 
         setIsSubmitting(true);
         try {
@@ -48,13 +86,14 @@ const UploadCenter = () => {
             formData.append('type', type);
             formData.append('technologyVersion', techVersion);
             formData.append('associatedVendor', associatedVendor);
-            formData.append('publishStatus', publishStatus);
+            formData.append('publishStatus', status);
+            formData.append('tags', JSON.stringify(selectedTags));
             if (file) {
                 formData.append('attachments', file);
             }
-            // Would normally append contextual tags and attachments here too
 
             await createDocument(formData);
+            queryClient.invalidateQueries({ queryKey: ['documents'] });
             navigate('/library');
         } catch (err) {
             console.error(err);
@@ -97,7 +136,7 @@ const UploadCenter = () => {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B87] outline-none"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        onBlur={checkDuplicate}
+                        onBlur={checkDuplicateAPI}
                         required
                     />
                 </div>
@@ -109,12 +148,9 @@ const UploadCenter = () => {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B87] outline-none"
                             value={type}
                             onChange={(e) => setType(e.target.value)}
-                            onBlur={checkDuplicate}
+                            onBlur={checkDuplicateAPI}
                         >
-                            <option value="Root Cause Analysis">Root Cause Analysis</option>
-                            <option value="Maintenance Procedure">Maintenance Procedure</option>
-                            <option value="Weekly Presentations">Weekly Presentations</option>
-                            <option value="New Tech Adoption">New Tech Adoption & Wiki Sprint</option>
+                            {INTELLIGENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
                     <div>
@@ -125,7 +161,7 @@ const UploadCenter = () => {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B87] outline-none"
                             value={techVersion}
                             onChange={(e) => setTechVersion(e.target.value)}
-                            onBlur={checkDuplicate}
+                            onBlur={checkDuplicateAPI}
                             required
                         />
                     </div>
@@ -139,20 +175,47 @@ const UploadCenter = () => {
                             value={associatedVendor}
                             onChange={(e) => setAssociatedVendor(e.target.value)}
                         >
-                            <option value="Internal">Internal (Ethio Telecom)</option>
-                            <option value="Huawei">Huawei</option>
-                            <option value="ZTE">ZTE</option>
-                            <option value="Ericsson">Ericsson</option>
+                            {VENDORS.map(v => <option key={v} value={v}>{v === 'Internal' ? 'Internal (Ethio Telecom)' : v}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Upload Asset File (PDF, Excel, Word)</label>
                         <input
                             type="file"
-                            className="w-full px-4 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B87] outline-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#004B87] file:text-white hover:file:bg-[#003A6A]"
+                            className="w-full px-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#004B87] outline-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#004B87] file:text-white hover:file:bg-[#003A6A]"
                             onChange={(e) => setFile(e.target.files?.[0] || null)}
                             accept=".pdf,.doc,.docx,.xls,.xlsx"
                         />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <TagIcon className="w-4 h-4" />
+                        Contextual Tags (Regional Navigation Matrix)
+                    </label>
+                    <div className="space-y-3 bg-gray-50 rounded-lg p-4">
+                        {Object.entries(tagsByCategory).map(([category, categoryTags]) => (
+                            <div key={category}>
+                                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">{category}</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {categoryTags.map((tag) => (
+                                        <button
+                                            key={tag._id}
+                                            type="button"
+                                            onClick={() => handleTagToggle(tag._id)}
+                                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                                selectedTags.includes(tag._id)
+                                                    ? 'bg-[#00A650] text-white'
+                                                    : 'bg-white border border-gray-200 text-gray-600 hover:border-[#00A650]'
+                                            }`}
+                                        >
+                                            {tag.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -196,16 +259,16 @@ const UploadCenter = () => {
                 <div className="flex justify-end space-x-4">
                     <button
                         type="button"
-                        onClick={(e) => { setPublishStatus('Draft'); handleSubmit(e); }}
-                        disabled={isSubmitting}
+                        onClick={(e) => handleSubmit(e as any, 'Draft')}
+                        disabled={isSubmitting || !title || !content}
                         className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Save as Draft
                     </button>
                     <button
                         type="button"
-                        onClick={(e) => { setPublishStatus('Published'); handleSubmit(e); }}
-                        disabled={!verifiedDuplicate || isSubmitting || duplicateWarning}
+                        onClick={(e) => handleSubmit(e as any, 'Published')}
+                        disabled={!verifiedDuplicate || isSubmitting || duplicateWarning || !title || !content}
                         className="bg-[#004B87] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#003A6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                     >
                         {isSubmitting ? 'Uploading...' : (

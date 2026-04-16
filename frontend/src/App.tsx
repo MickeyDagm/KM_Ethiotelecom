@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Library from './pages/Library';
 import UploadCenter from './pages/UploadCenter';
 import ExpertDirectory from './pages/ExpertDirectory';
+import ExpertProfile from './pages/ExpertProfile';
 import DocumentDetail from './pages/DocumentDetail';
 import Profile from './pages/Profile';
 import { useAuthStore } from './store/authStore';
@@ -61,6 +62,7 @@ function App() {
             <Route path="library/:id" element={<DocumentDetail />} />
             <Route path="upload" element={<UploadCenter />} />
             <Route path="experts" element={<ExpertDirectory />} />
+            <Route path="experts/:id" element={<ExpertProfile />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>

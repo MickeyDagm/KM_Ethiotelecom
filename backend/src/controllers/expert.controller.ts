@@ -33,14 +33,11 @@ export const getExpertById = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Expert not found' });
         }
 
-        const authoredDocs = await Document.find({ author: expert._id })
-            .select('title type createdAt views tags')
-            .populate('tags', 'name category')
-            .sort({ createdAt: -1 });
-
+        const authoredDocsCount = await Document.countDocuments({ author: expert._id });
+        
         res.json({
-            expert,
-            authoredDocs,
+            ...expert.toObject(),
+            contributions: authoredDocsCount,
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error fetching expert details' });

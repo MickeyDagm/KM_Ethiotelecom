@@ -7,6 +7,7 @@ import path from 'path';
 import authRoutes from './routes/auth.routes';
 import documentRoutes from './routes/document.routes';
 import expertRoutes from './routes/expert.routes';
+import tagRoutes from './routes/tag.routes';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ mongoose
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/experts', expertRoutes);
+app.use('/api/tags', tagRoutes);
 
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
