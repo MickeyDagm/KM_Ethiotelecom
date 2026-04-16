@@ -6,6 +6,8 @@ import { useAuthStore } from '../store/authStore';
 import { Tag, Clock, Send, MessageSquare, Edit, X, Save, Eye, User, Download, FileIcon, ArrowLeft, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 
+const API_BASE = import.meta.env.VITE_API_URL || '${API_BASE}';
+
 interface Tag {
     _id: string;
     name: string;
@@ -274,15 +276,15 @@ const DocumentDetail = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center space-x-2">
-                                            <button
+                                            {/* <button
                                                 onClick={() => setShowPreview(!showPreview)}
                                                 className="flex items-center space-x-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
                                             >
                                                 <Eye className="w-4 h-4" />
                                                 <span>{showPreview ? 'Hide Preview' : 'Preview'}</span>
-                                            </button>
+                                            </button> */}
                                             <a
-                                                href={`http://localhost:5000/api/documents/${doc._id}/download/0`}
+                                                href={`${API_BASE}/api/documents/${doc._id}/download/0`}
                                                 className="flex items-center space-x-2 px-3 py-2 bg-[#004B87] text-white rounded-lg hover:bg-[#003A6A] transition-colors text-sm font-medium"
                                             >
                                                 <Download className="w-4 h-4" />
@@ -293,7 +295,7 @@ const DocumentDetail = () => {
                                     {showPreview ? (
                                         <div className="flex-1 bg-white rounded-lg border border-gray-200 overflow-hidden">
                                             <iframe
-                                                src={`http://localhost:5000/api/documents/${doc._id}/preview/0`}
+                                                src={`${API_BASE}/api/documents/${doc._id}/preview/0`}
                                                 className="w-full h-full min-h-[400px]"
                                                 title="Asset Document"
                                             />
